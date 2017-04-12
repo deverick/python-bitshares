@@ -1,5 +1,7 @@
 from bitshares.instance import shared_bitshares_instance
 from datetime import datetime, timedelta
+import calendar
+import dateutil.parser
 from .utils import formatTimeFromNow, formatTime, formatTimeString
 from .asset import Asset
 from .amount import Amount
@@ -209,14 +211,21 @@ class Market(dict):
             formatTime(stop),
             formatTime(start),
             limit)
-        return list(map(
-            lambda x: FilledOrder(
-                x,
-                quote=Amount(x["amount"], self["quote"], bitshares_instance=self.bitshares),
-                base=Amount(float(x["amount"]) * float(x["price"]), self["base"], bitshares_instance=self.bitshares),
-                bitshares_instance=self.bitshares
-            ), orders
-        ))
+        _trades = []
+        for trade in orders:
+            data = {}
+            data["price"] = float(trade["price"])
+            data["amount"] = float(trade["amount"])
+            data["datetime"] = calendar.timegm(dateutil.parser.parse(trade["date"]).timetuple())
+            _trades.append(data)
+        data = {
+            "trades": _trades,
+            "base_id": self["base"]["id"],
+            "base_symbol": self["base"]["symbol"],
+            "quote_id": self["quote"]["id"],
+            "quote_symbol": self["quote"]["symbol"]
+        }
+        return data
 
     def accounttrades(self, account=None, limit=25):
         """ Returns your trade history for a given market, specified by
