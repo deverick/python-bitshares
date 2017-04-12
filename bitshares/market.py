@@ -202,17 +202,20 @@ class Market(dict):
             self["quote"]["id"],
             limit
         )
-        asks = list(map(lambda x: Order(
-            Amount(x["quote"], self["quote"], bitshares_instance=self.bitshares),
-            Amount(x["base"], self["base"], bitshares_instance=self.bitshares),
-            bitshares_instance=self.bitshares
-        ), orders["asks"]))
-        bids = list(map(lambda x: Order(
-            Amount(x["quote"], self["quote"], bitshares_instance=self.bitshares),
-            Amount(x["base"], self["base"], bitshares_instance=self.bitshares),
-            bitshares_instance=self.bitshares
-        ), orders["bids"]))
-        data = {"asks": asks, "bids": bids}
+        _asks = [(Amount(elem["price"], self["quote"], bitshares_instance=self.bitshares),
+                    Amount(elem["quote"], self["quote"], bitshares_instance=self.bitshares)
+                ) for elem in orders["asks"]]
+        _bids = [(Amount(elem["price"], self["quote"], bitshares_instance=self.bitshares),
+                    Amount(elem["quote"], self["quote"], bitshares_instance=self.bitshares)
+                ) for elem in orders["bids"]]
+        data = {
+            "asks": _asks,
+            "bids": _bids,
+            "base_id": self["base"]["id"],
+            "base_symbol": self["base"]["symbol"],
+            "quote_id": self["quote"]["id"],
+            "quote_symbol": self["quote"]["symbol"]
+        }
         return data
 
     def trades(self, limit=25, start=None, stop=None):
