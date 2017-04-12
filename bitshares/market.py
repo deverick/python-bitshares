@@ -93,58 +93,33 @@ class Market(dict):
         """
         data = {}
         # Core Exchange rate
-        data["core_exchange_rate"] = Price(
-            self["quote"]["options"]["core_exchange_rate"],
-            base=self["base"],
-            bitshares_instance=self.bitshares
-        )
+        data["core_exchange_rate"] = float(self["quote"]["options"]["core_exchange_rate"]["base"]["amount"])
 
         # smartcoin stuff
         if "bitasset_data_id" in self["quote"]:
             bitasset = self.bitshares.rpc.get_object(self["quote"]["bitasset_data_id"])
             backing_asset_id = bitasset["options"]["short_backing_asset"]
             if backing_asset_id == self["base"]["id"]:
-                data["quoteSettlement_price"] = Price(
-                    bitasset["current_feed"]["settlement_price"],
-                    base=self["base"],
-                    bitshares_instance=self.bitshares
-                )
+                data["quoteSettlement_price"] = float(bitasset["current_feed"]["settlement_price"])
         elif "bitasset_data_id" in self["base"]:
             bitasset = self.bitshares.rpc.get_object(self["base"]["bitasset_data_id"])
             backing_asset_id = bitasset["options"]["short_backing_asset"]
-            if backing_asset_id == self["quote"]["id"]:
-                data["baseSettlement_price"] = Price(
-                    bitasset["current_feed"]["settlement_price"],
-                    base=self["base"],
-                    bitshares_instance=self.bitshares
-                )
+            if backing_asset_id == float(bitasset["current_feed"]["settlement_price"])
 
         ticker = self.bitshares.rpc.get_ticker(
             self["base"]["id"],
             self["quote"]["id"],
         )
-        data["baseVolume"] = Amount(ticker["base_volume"], self["base"], bitshares_instance=self.bitshares)
-        data["quoteVolume"] = Amount(ticker["quote_volume"], self["quote"], bitshares_instance=self.bitshares)
-        data["lowestAsk"] = Price(
-            ticker["lowest_ask"],
-            base=self["base"],
-            quote=self["quote"],
-            bitshares_instance=self.bitshares
-        )
-        data["highestBid"] = Price(
-            ticker["highest_bid"],
-            base=self["base"],
-            quote=self["quote"],
-            bitshares_instance=self.bitshares
-        )
-        data["latest"] = Price(
-            ticker["latest"],
-            quote=self["quote"],
-            base=self["base"],
-            bitshares_instance=self.bitshares
-        )
-        data["percentChange"] = round(float(ticker["percent_change"]) * 100, 3)
-
+        data["base_volume"] = float(ticker["base_volume"])
+        data["quote_volume"] = float(ticker["quote_volume"])
+        data["low"] = float(ticker["lowest_ask"])
+        data["high"] = float(ticker["highest_bid"])
+        data["last"] = float(ticker["latest"])
+        data["percent_change"] = round(float(ticker["percent_change"]) * 100, 3)
+        data["base_id"] = self["base"]["id"],
+        data["base_symbol"] = self["base"]["symbol"]
+        data["quote_id"] = self["quote"]["id"]
+        data["quote_symbol"] = self["quote"]["symbol"]
         return data
 
     def volume24h(self):
@@ -165,8 +140,8 @@ class Market(dict):
             self["quote"]["id"],
         )
         return {
-            self["base"]["symbol"]: Amount(volume["base_volume"], self["base"], bitshares_instance=self.bitshares),
-            self["quote"]["symbol"]: Amount(volume["quote_volume"], self["quote"], bitshares_instance=self.bitshares)
+            self["base"]["symbol"]: float(volume["base_volume"]),
+            self["quote"]["symbol"]: float(volume["quote_volume"])
         }
 
     def orderbook(self, limit=25):
@@ -202,12 +177,8 @@ class Market(dict):
             self["quote"]["id"],
             limit
         )
-        _asks = [(Amount(elem["price"], self["quote"], bitshares_instance=self.bitshares),
-                    Amount(elem["quote"], self["quote"], bitshares_instance=self.bitshares)
-                ) for elem in orders["asks"]]
-        _bids = [(Amount(elem["price"], self["quote"], bitshares_instance=self.bitshares),
-                    Amount(elem["quote"], self["quote"], bitshares_instance=self.bitshares)
-                ) for elem in orders["bids"]]
+        _asks = [(float(elem["price"]), float(elem["quote"])) for elem in orders["asks"]]
+        _bids = [(float(elem["price"]), float(elem["quote"])) for elem in orders["bids"]]
         data = {
             "asks": _asks,
             "bids": _bids,
