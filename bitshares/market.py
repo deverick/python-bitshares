@@ -55,11 +55,13 @@ class Market(dict):
         if len(args) == 1 and isinstance(args[0], str):
             import re
             quote_symbol, base_symbol = re.split("[/-:]", args[0])
-            quote = Asset(quote_symbol, bitshares_instance=self.bitshares)
-            base = Asset(base_symbol, bitshares_instance=self.bitshares)
-            super(Market, self).__init__({"base": base, "quote": quote})
+            self.quote = Asset(quote_symbol, bitshares_instance=self.bitshares)
+            self.base = Asset(base_symbol, bitshares_instance=self.bitshares)
+            super(Market, self).__init__({"base": self.base, "quote": self.quote})
         if len(args) == 0 and base and quote:
             super(Market, self).__init__({"base": base, "quote": quote})
+            self.base = base
+            self.quote = quote
 
     def ticker(self):
         """ Returns the ticker for all markets.
@@ -285,21 +287,40 @@ class Market(dict):
             raise ValueError("You need to provide an account")
         account = Account(account, full=True, bitshares_instance=self.bitshares)
 
-        r = []
+        _orders = []
         orders = account["limit_orders"]
-        for o in orders:
+        for order in orders:
             if ((
-                o["sell_price"]["base"]["asset_id"] == self["base"]["id"] and
-                o["sell_price"]["quote"]["asset_id"] == self["quote"]["id"]
+                order["sell_price"]["base"]["asset_id"] == self["base"]["id"] and
+                order["sell_price"]["quote"]["asset_id"] == self["quote"]["id"]
             ) or (
-                o["sell_price"]["base"]["asset_id"] == self["quote"]["id"] and
-                o["sell_price"]["quote"]["asset_id"] == self["base"]["id"]
+                order["sell_price"]["base"]["asset_id"] == self["quote"]["id"] and
+                order["sell_price"]["quote"]["asset_id"] == self["base"]["id"]
             )):
-                r.append(Order(
-                    o,
-                    bitshares_instance=self.bitshares
-                ))
-        return r
+                if order["sell_price"]["base"]["asset_id"] == self["base"]["id"]:
+                    _base_amt = float(order["sell_price"]["base"]["amount"]) / 10 ** self.base.get("precision")
+                    _quote_amt = float(order["sell_price"]["quote"]["amount"]) / 10 ** self.quote.get("precision")
+                    _amount = _quote_amt
+                    _price = _base_amt / _quote_amt
+
+                else:
+                    _base_amt = float(order["sell_price"]["base"]["amount"]) / 10 ** self.quote.get("precision")
+                    _quote_amt = float(order["sell_price"]["quote"]["amount"]) / 10 ** self.base.get("precision")
+                    _amount = _base_amt
+                    _price = _quote_amt / _base_amt
+                data = {}
+                data["type"] = "buy" if order["sell_price"]["base"]["asset_id"] == self["base"]["id"] else "sell"
+                data["price"] = _price
+                data["amount"] = _amount 
+                data["orderid"] = order["id"]
+                data["status"] = "open"
+                data["expiry_datetime"] = calendar.timegm(dateutil.parser.parse(order["expiration"]).timetuple())
+                data["base_id"] = self["base"]["id"]
+                data["base_symbol"] = self["base"]["symbol"]
+                data["quote_id"] = self["quote"]["id"]
+                data["quote_symbol"] = self["quote"]["symbol"]
+                _orders.append(data)
+        return _orders
 
     def buy(
         self,
