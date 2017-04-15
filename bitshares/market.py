@@ -108,7 +108,8 @@ class Market(dict):
         elif "bitasset_data_id" in self["base"]:
             bitasset = self.bitshares.rpc.get_object(self["base"]["bitasset_data_id"])
             backing_asset_id = bitasset["options"]["short_backing_asset"]
-            if backing_asset_id == float(bitasset["current_feed"]["settlement_price"])
+            if backing_asset_id == self["quote"]["id"]:
+                data["base_settlement_price"] = float(bitasset["current_feed"]["settlement_price"])
 
         ticker = self.bitshares.rpc.get_ticker(
             self["base"]["id"],
